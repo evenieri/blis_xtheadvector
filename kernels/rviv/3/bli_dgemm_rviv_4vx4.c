@@ -34,6 +34,30 @@
 */
 #include "bli_rviv_utils.h"
 
+////// HERO_1 includes /////
+/*#ifdef __HERO_1
+#include "encoding.h"
+#include "inttypes.h"
+#include "matvec_dev.h"
+extern volatile uint32_t dma_wait_cycles;
+////// HOST includes /////
+#else
+#include <ctype.h>
+#include <fcntl.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <libhero/hero_api.h>
+#include <omp.h>
+#define snrt_printf printf
+
+static inline void fence() { asm volatile("fence" ::: "memory"); }
+*/
 void bli_dgemm_rviv_asm_4vx4
     (
              intptr_t   k,
@@ -58,6 +82,7 @@ void bli_dgemm_rviv_4vx4
        const cntx_t*    cntx
      )
 {
+
 	// The assembly kernels always take native machine-sized integer arguments.
 	// dim_t and inc_t are normally defined as being machine-sized. If larger, assert.
 	bli_static_assert( sizeof(dim_t) <= sizeof(intptr_t) &&
@@ -72,8 +97,47 @@ void bli_dgemm_rviv_4vx4
 	// The kernel assumes rs_c == 1, and the context should not deviate from it.
 	assert( rs_c == 1 );
 
-	bli_dgemm_rviv_asm_4vx4( k, alpha, a, b, beta, c,
-	                         get_vlenb(), cs_c * sizeof(double) );
+/*#pragma omp target device(1) map(to : alpha, a, b, beta, c, k, cs_c)
+    {
+        volatile *void a_ = a;
+        volatile *void b_ = b;
+        volatile *void alpha_ = alpha;
+        volatile *void beta_ = beta;
+        volatile *void c_ = c;
+	volatile dim_t k_ = k;
 
+//	bli_dgemm_rviv_asm_4vx4( k, alpha, a, b, beta, c,
+//	    			get_vlenb(), cs_c * sizeof(double) );
+*/
+	const int M = 4; // Assuming 4x4 blocks as per the assembly
+        const int N = 4; // Assuming 4x4 blocks as per the assembly
+        double AB[M][N] = {0}; // Accumulator for the result
+    
+    // Matrix multiplication
+    for (intptr_t l = 0; l < k; l++) {
+        // Compute each block row of A and corresponding B row
+        for (int i = 0; i < M; i++) {
+            for (int j = 0; j < N; j++) {
+                AB[i][j] += a[i + l * M] * b[l * N + j];
+            }
+        }
+    }
+
+    // Multiply accumulators by alpha
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            AB[i][j] *= *alpha;
+        }
+    }
+
+    // Apply beta and store in C
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            c[i * rs_c + j * cs_c] = AB[i][j] + (*beta * c[i * rs_c + j * cs_c]);
+        }
+    }
+}
+	
+//}
 	GEMM_UKR_FLUSH_CT( d );
 }
