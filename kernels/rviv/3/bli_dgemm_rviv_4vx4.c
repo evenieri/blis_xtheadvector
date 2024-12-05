@@ -111,14 +111,36 @@ void bli_dgemm_rviv_4vx4
 */
 	const int M = 4; // Assuming 4x4 blocks as per the assembly
         const int N = 4; // Assuming 4x4 blocks as per the assembly
-        double AB[M][N] = {0}; // Accumulator for the result
-    
+        //double XC[4][4] = {{0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0}}; // Accumulator for the result
+   	
+       	double * XA = (double *)a;
+       	double * XB = (double *)b;
+       	double * alpha_ = (double *)alpha;
+       	double * beta_ = (double *)beta;
+	double * XC = (double *)c;
+	int lda = M;
+	int ldb = k;
+	int ldc;
+	#ifdef DGEMM_MR
+    	ldc = ( ( m - 1 ) / DGEMM_MR + 1 ) * DGEMM_MR;
+	#else
+    	ldc     = m;
+	#endif
+
+	for ( int j = 0; j < N; j ++ ) {
+        	for ( int i = 0; i < M; i ++ ) {
+            		for ( int p = 0; p < k; p ++ ) {
+                		XC[ j * ldc + i ] += XA[ p * lda + i ] * XB[ j * ldb + p ];
+			}
+		}
+	}
+/*		
     // Matrix multiplication
     for (intptr_t l = 0; l < k; l++) {
         // Compute each block row of A and corresponding B row
         for (int i = 0; i < M; i++) {
             for (int j = 0; j < N; j++) {
-                AB[i][j] += a[i + l * M] * b[l * N + j];
+                AB[i][j] += a_[i + l * M] * b_[l * N + j];
             }
         }
     }
@@ -126,18 +148,18 @@ void bli_dgemm_rviv_4vx4
     // Multiply accumulators by alpha
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++) {
-            AB[i][j] *= *alpha;
+            AB[i][j] *= *alpha_;
         }
     }
 
     // Apply beta and store in C
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++) {
-            c[i * rs_c + j * cs_c] = AB[i][j] + (*beta * c[i * rs_c + j * cs_c]);
+            c_[i * rs_c + j * cs_c] = AB[i][j] + (*beta_ * c_[i * rs_c + j * cs_c]);
         }
     }
 }
-	
+*/	
 //}
 	GEMM_UKR_FLUSH_CT( d );
 }
