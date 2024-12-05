@@ -127,7 +127,7 @@ void bli_dgemm_rviv_4vx4
     	ldc     = m;
 	#endif
 	for(int x = 0; x < M; x++){
-		for(int y = 0; y < N){
+		for(int y = 0; y < N; y++){
 		XC[i][j] *= *beta_;
 		XA[i][j] *= *alpha_;
 		}
