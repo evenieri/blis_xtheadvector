@@ -126,10 +126,13 @@ void bli_dgemm_rviv_4vx4
 	#else
     	ldc     = m;
 	#endif
-	for(int x = 0; x < M; x++){
-		for(int y = 0; y < N; y++){
-		XC[i][j] *= *beta_;
-		XA[i][j] *= *alpha_;
+
+	for ( int j = 0; j < N; j ++ ) {
+                for ( int i = 0; i < M; i ++ ) {
+                        for ( int p = 0; p < k; p ++ ) {
+                                XC[ j * ldc + i ] *= *beta_; 
+				XA[ p * lda + i ] *= *alpha_;
+			}
 		}
 	}
 	for ( int j = 0; j < N; j ++ ) {
